@@ -69,7 +69,7 @@ void SteamGameStats::setupDisplay(void)  {
     //kernelGroup->addButton(radio5, 4);
     //QObject::connect(kernelGroup, SIGNAL(buttonClicked(int)), this, SLOT(getKernel(int)));
 
-    //Need a method when selected other year
+    //Need a method when selected other year -- testing commit to other branch
     //Assume it is 2015 for now
 
     m_svg = new QSvgWidget();
