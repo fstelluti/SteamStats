@@ -36,18 +36,17 @@ public:
     ~SteamGameStats();
 
 private slots:
-    void setSteamYearDataFile(int year);
-    //void runRandomDataCmd(void);    //Needed?
-    void readFile(QString file);    //Reads file into R
-    void getStatsByYear();
+    void setSteamYearDataFile(int year); //Sets the year to selected the correct data file
+    void readFile(QString file);         //Reads file into R
+    void getStatsByYear();               //Get all statistics based on selected year
 
 private:
-    void setupDisplay(void);    // standard GUI boilderplate of arranging things
-    void plot(void);            // run a density plot in R and update the
+    void setupDisplay(void);    // Set up the GUI components
+    void plot(void);            // Run a plot of (Update later)
     void filterFile(void);      // modify the richer SVG produced by R
 
-    int getNumGames();
-    double getAvgPrice();
+    int getNumGames();          // Statistic to get number of games
+    double getAvgPrice();       // Statistic to get average price of all games
 
     QSvgWidget *m_svg;          // the SVG device
     RInside & m_R;              // reference to the R instance passed to constructor

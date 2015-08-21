@@ -8,55 +8,46 @@
 
 #include "SteamGameStats.h"
 
-SteamGameStats::SteamGameStats(RInside & R) : m_R(R)
+//Constructor sets to default year to 2015, the number of games considered and average price to zero.
+SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0), m_avgPrice(0.0)
 {
-    m_year = 2015;      //Default year
-    m_numGames = 0;     //Initially zero games
-    m_avgPrice = 0;     //and zero average price
-
+    //Set up temp files used for plots
     m_tempfile = QString::fromStdString(Rcpp::as<std::string>(m_R.parseEval("tfile <- tempfile()")));
     m_svgfile = QString::fromStdString(Rcpp::as<std::string>(m_R.parseEval("sfile <- tempfile()")));
 
+    //Initialize and display the GUI
     setupDisplay();
 }
 
 SteamGameStats::~SteamGameStats() {}
 
 void SteamGameStats::setupDisplay(void)  {
+    //Window name
     QWidget *window = new QWidget;
     window->setWindowTitle("Steam Stats with using Rinside");
 
-//    QSpinBox *spinBox = new QSpinBox;
-//    QSlider *slider = new QSlider(Qt::Horizontal);
-//    spinBox->setRange(5, 200);
-//    slider->setRange(5, 200);
-//    QObject::connect(spinBox, SIGNAL(valueChanged(int)), slider, SLOT(setValue(int)));
-//    QObject::connect(slider, SIGNAL(valueChanged(int)), spinBox, SLOT(setValue(int)));
-//    spinBox->setValue(m_bw);
-//    QObject::connect(spinBox, SIGNAL(valueChanged(int)), this, SLOT(getBandwidth(int)));
-
-    readFile("Data/2015_SteamStats.csv");            //Read file
-    getStatsByYear();                           //Get all stats
+    readFile("Data/2015_SteamStats.csv");   //Read file -- Change when using multiple files
+    getStatsByYear();                       //Get all stats
 
     //Labels for each statistic
     QLabel *numGamesLabel = new QLabel(QString::number(getNumGames()));
     QLabel *avgPriceLabel = new QLabel("$" + QString::number(getAvgPrice()));
 
-    //QLineEdit *cmdEntry = new QLineEdit(m_cmd);
-    //QObject::connect(cmdEntry,  SIGNAL(textEdited(QString)), this, SLOT(getRandomDataCmd(QString)));
-    //QObject::connect(cmdEntry,  SIGNAL(editingFinished()), this, SLOT(runRandomDataCmd()));
-
+    //Sales by year component
     QGroupBox *yearBox = new QGroupBox("Steam sales by year");
 
+    //Year selection comboBox
     QComboBox *combo = new QComboBox;
     combo->addItem("2015",0);
     combo->addItem("2014",1);
     combo->addItem("2013",1);
     combo->addItem("2012",1);
 
+    //Add comboBox to 'Steam sales by year'
     QVBoxLayout *vbox = new QVBoxLayout;
     vbox->addWidget(combo);
 
+    //Set properties of yearBox
     yearBox->setMinimumSize(260,140);
     yearBox->setMaximumSize(260,140);
     yearBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -77,25 +68,26 @@ void SteamGameStats::setupDisplay(void)  {
     //runRandomDataCmd();         // also calls plot()
     plot();
 
+    //Game statistics component
     QGroupBox *estimationBox = new QGroupBox("Game Stats");
 
-    //QVBoxLayout *topright = new QVBoxLayout;
+    //Add each statistic to 'Game Stats'
     QFormLayout *topright = new QFormLayout;
-//    topright->addWidget(cmdLabel);
-//    topright->addWidget(cmdLabel2);
-//    topright->addWidget(cmdLabel3);
     topright->addRow(tr("&Number of Games:"), numGamesLabel);
     topright->addRow(tr("&Average Price:"), avgPriceLabel);
 
+    //Set properties of estimationBox
     estimationBox->setMinimumSize(360,140);
     estimationBox->setMaximumSize(360,140);
     estimationBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     estimationBox->setLayout(topright);
 
-    QHBoxLayout *upperlayout = new QHBoxLayout; //Adds both Top containers
+    //Adds both Top containers
+    QHBoxLayout *upperlayout = new QHBoxLayout;
     upperlayout->addWidget(yearBox);
     upperlayout->addWidget(estimationBox);
 
+    //Add the svg graph picture
     QHBoxLayout *lowerlayout = new QHBoxLayout;
     lowerlayout->addWidget(m_svg);
 
@@ -131,9 +123,11 @@ void SteamGameStats::setSteamYearDataFile(int year) {
 void SteamGameStats::readFile(QString file)
 {
     m_file = file;
-    std::string cmd = "SD <- read.csv(\"~/Desktop/Github/R_SteamStats/" + file.toStdString() + "\", header=TRUE)";    //Command to read the csv file
+
+    //Command to read the csv file
+    std::string cmd = "SD <- read.csv(\"~/Desktop/Github/R_SteamStats/" + file.toStdString() + "\", header=TRUE)";
     m_R["SD"] = cmd;            //Store variable in R
-    m_R.parseEvalQNT(cmd);
+    m_R.parseEvalQNT(cmd);      //Parse and execute the command string
 }
 
 void SteamGameStats::getStatsByYear()
@@ -141,18 +135,18 @@ void SteamGameStats::getStatsByYear()
     //Set the year
     setSteamYearDataFile(m_year);
 
-    //Switch? IF? Assume it's only 2015
+    //Switch? IF? Assume it's only 2015 for now
 
     std::string cmd1 = "nrow(SD)";                   //Number of games (rows)
     std::string cmd2 = "SD2 <- SD; SD2$Price <- sub('$','',as.character(SD2$Price), fixed=TRUE);"
                        "SD2$Price <- sub('Free','0',as.character(SD2$Price), fixed=TRUE);"
                        "Price <- as.numeric(SD2$Price); avgPrice <- mean(Price); avgPrice <- round(avgPrice, digits=2)";
 
-    Rcpp::NumericVector v = m_R.parseEval(cmd1);  //Store result
-    m_numGames = v[0];
+    Rcpp::NumericVector v = m_R.parseEval(cmd1);  //Store result as a vector
+    m_numGames = v[0];  //First index of vector is the number of games
 
     Rcpp::NumericVector v2 = m_R.parseEval(cmd2);
-    m_avgPrice = v2[0];
+    m_avgPrice = v2[0]; //Second index of vector is the average price
 }
 
 int SteamGameStats::getNumGames()
@@ -164,12 +158,6 @@ double SteamGameStats::getAvgPrice()
 {
     return m_avgPrice;
 }
-
-//void SteamGameStats::runRandomDataCmd(void) {
-//    std::string cmd = "y2 <- " + m_cmd.toStdString() + "; y <- y2";
-//    m_R.parseEvalQNT(cmd);
-//    plot();                     // after each random draw, update plot with estimate
-//}
 
 void SteamGameStats::filterFile() {
     // cairoDevice creates richer SVG than Qt can display
