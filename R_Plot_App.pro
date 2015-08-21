@@ -9,13 +9,16 @@
 ## for discussion specific to Windows.
 ##
 ## Copyright (C) 2012  Dirk Eddelbuettel and Romain Francois
+##
+## Modified by: Francois Stelluti
 
 ## build an app based on the one headers and two source files
 TEMPLATE = 		app
-HEADERS = \              
-    SteamGameStats.h
-SOURCES = 		main.cpp \
-    SteamGameStats.cpp
+HEADERS = \
+    Source/SteamGameStats.h
+SOURCES = \
+    Source/main.cpp \
+    Source/SteamGameStats.cpp
 
 ## beyond the default configuration, also use SVG graphics
 QT += 			svg
