@@ -45,8 +45,10 @@ private:
     void plot(void);            // Run a plot of (Update later)
     void filterFile(void);      // modify the richer SVG produced by R
 
-    int getNumGames();          // Statistic to get number of games
-    double getAvgPrice();       // Statistic to get average price of all games
+    int getNumGames() const;          // Statistic to get number of games
+    double getAvgPrice() const;       // Statistic to get average price of all games
+    std::string getPrice() const;          //Gets the properly formatted price form the csv file
+    std::string getAvgOwners() const;          //Gets the properly formatted number of owners form the csv file
 
     QSvgWidget *m_svg;          // the SVG device
     RInside & m_R;              // reference to the R instance passed to constructor
