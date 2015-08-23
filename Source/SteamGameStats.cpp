@@ -34,24 +34,28 @@ void SteamGameStats::setupDisplay(void)  {
     QLabel *avgPriceLabel = new QLabel("$" + QString::number(getAvgPrice()));
 
     //Sales by year component
-    QGroupBox *yearBox = new QGroupBox("Steam sales by year");
+    QGroupBox *yearBox = new QGroupBox("Steam sales by timeframe");
 
     //Year selection comboBox
-    QComboBox *combo = new QComboBox;
-    combo->addItem("2015",0);
-    combo->addItem("2014",1);
-    combo->addItem("2013",1);
-    combo->addItem("2012",1);
+    QComboBox *yearCombo = new QComboBox;
+    yearCombo->addItem("2015",0);
+    yearCombo->addItem("2014",1);
+    yearCombo->addItem("2013",1);
+    yearCombo->addItem("2012",1);
+
+    yearCombo->setFixedWidth(75);
 
     //Add comboBox to 'Steam sales by year'
-    QVBoxLayout *vbox = new QVBoxLayout;
-    vbox->addWidget(combo);
+    QFormLayout *topLeft = new QFormLayout;
+    topLeft->addRow(tr("Select year:"), yearCombo);
+    //topLeft->addWidget(combo);
+    //topLeft->setAlignment(combo,Qt::AlignLeft);
 
     //Set properties of yearBox
-    yearBox->setMinimumSize(260,140);
-    yearBox->setMaximumSize(260,140);
+    yearBox->setMinimumSize(320,140);
+    yearBox->setMaximumSize(320,140);
     yearBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    yearBox->setLayout(vbox);
+    yearBox->setLayout(topLeft);
 
     QButtonGroup *kernelGroup = new QButtonGroup;
     //kernelGroup->addButton(radio1, 0);
@@ -72,15 +76,15 @@ void SteamGameStats::setupDisplay(void)  {
     QGroupBox *estimationBox = new QGroupBox("Game Stats");
 
     //Add each statistic to 'Game Stats'
-    QFormLayout *topright = new QFormLayout;
-    topright->addRow(tr("&Number of Games:"), numGamesLabel);
-    topright->addRow(tr("&Average Price:"), avgPriceLabel);
+    QFormLayout *topRight = new QFormLayout;
+    topRight->addRow(tr("Number of Games:"), numGamesLabel);
+    topRight->addRow(tr("Average Price:"), avgPriceLabel);
 
     //Set properties of estimationBox
-    estimationBox->setMinimumSize(360,140);
-    estimationBox->setMaximumSize(360,140);
+    estimationBox->setMinimumSize(320,140);
+    estimationBox->setMaximumSize(320,140);
     estimationBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    estimationBox->setLayout(topright);
+    estimationBox->setLayout(topRight);
 
     //Adds both Top containers
     QHBoxLayout *upperlayout = new QHBoxLayout;
