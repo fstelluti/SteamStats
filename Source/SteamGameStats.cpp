@@ -34,6 +34,7 @@ void SteamGameStats::setupDisplay(void)  {
     //Labels for each statistic
     QLabel *numGamesLabel = new QLabel(QString::number(getNumGames()));
     QLabel *avgPriceLabel = new QLabel("$" + QString::number(getAvgPrice()));
+    QLabel *maxPriceLabel = new QLabel("$" + QString::number(getMaxPrice()));
 
     //Sales by year component
     QGroupBox *yearBox = new QGroupBox("Steam sales by timeframe");
@@ -79,6 +80,7 @@ void SteamGameStats::setupDisplay(void)  {
     QFormLayout *topRight = new QFormLayout;
     topRight->addRow(tr("Number of Games:"), numGamesLabel);
     topRight->addRow(tr("Average Price:"), avgPriceLabel);
+    topRight->addRow(tr("Maximum Price:"), maxPriceLabel);
 
     //Set properties of estimationBox
     estimationBox->setMinimumSize(320,170);
@@ -108,18 +110,18 @@ void SteamGameStats::setupDisplay(void)  {
 void SteamGameStats::plot(void) {
 
     //Currently, only a plot of the number of owners vs the price of a game
+
     std::string svgFile = "svg(width=6,height=5,pointsize=10,filename=tfile); ";
-    //std::string cmd1 = "yearData <- data.frame(cond = rep(c(\"A\", \"B\"), each=10), price = 1:20 + rnorm(20,sd=3), owners = 1:20 + rnorm(20,sd=3));" ;
-    //std::string cmd2 = "print(ggplot(yearData, aes(x=price, y=owners)) + geom_point(shape=1) + geom_smooth(method=lm,se=FALSE)); " ;   //Plot and print the data
     std::string price = getPrice();
     std::string owners = getAvgOwners();
     std::string data = "dataPriceOwners <- data.frame(price, avgNumOwners); ";
-    std::string plot = "print(ggplot(dataPriceOwners, aes(x=Price, y=avgNumOwners)) + geom_point(shape=1) + geom_smooth(method=lm,se=FALSE)); " ;
+    std::string plot = "print(ggplot(dataPriceOwners, aes(x=price, y=avgNumOwners, colour=avgNumOwners)) + geom_point(shape=16) "
+                       " + labs(title='Price vs Average number of Owners', x='Price', y='AvgNumOwners') "
+                       " + geom_smooth(method=lm,se=FALSE) + scale_colour_gradientn(colours=c('#FF3300', '#3366FF', '#00CCFF')) ); " ;
     std::string dev = "dev.off()";
 
-    //std::string cmd = svgFile + price + owners + data + plot + dev;
-    std::string plot1 = "plot(density(1,100)); ";    //Temp
-    std::string cmd = svgFile + plot1 + dev;
+    //Build command and execute in R
+    std::string cmd = svgFile + price + owners + data + plot + dev;
 
     m_R.parseEvalQ(cmd);        //Parse and execute the string from R
     filterFile();           	//Simplify the svg file for display by Qt
@@ -149,16 +151,22 @@ void SteamGameStats::getStatsByYear()
     //Set the year
     setSteamYearDataFile(m_year);
 
-    //Switch? IF? Assume it's only 2015 for now
+    //Switch? IF? Assume it's only 2015 for now. Use vector to store different results?
 
     std::string numGames = "nrow(SD)";    //Number of games (rows)
     std::string averagePrice = getPrice() + "avgPrice <- mean(price); avgPrice <- round(avgPrice, digits=2)";
+    std::string maxPrice = getPrice() + "maxPrice <- max(price); maxPrice <- round(maxPrice, digits=2)";
 
-    Rcpp::NumericVector v = m_R.parseEval(numGames);  //Store result as a vector
+    Rcpp::NumericVector v;  //Store result as a vector -- REMOVE?
+
+    v[0] = m_R.parseEval(numGames);
     m_numGames = v[0];  //First index of vector is the number of games
 
-    Rcpp::NumericVector v2 = m_R.parseEval(averagePrice);
-    m_avgPrice = v2[0]; //Second index of vector is the average price
+    v[1] = m_R.parseEval(averagePrice);
+    m_avgPrice = v[1]; //Second index of vector is the average price
+
+    v[2] = m_R.parseEval(maxPrice);
+    m_maxPrice = v[2];
 }
 
 int SteamGameStats::getNumGames() const
@@ -171,7 +179,12 @@ double SteamGameStats::getAvgPrice() const
     return m_avgPrice;
 }
 
-std::string SteamGameStats::getPrice() const
+double SteamGameStats::getMaxPrice() const
+{
+    return m_maxPrice;
+}
+
+std::string SteamGameStats::getPrice()
 {
     //Use the variable SD, which is stored in R after reading the selected CSV file
     //Also returns Price as a variable in R (used to get mean, average, etc)
@@ -184,15 +197,16 @@ std::string SteamGameStats::getPrice() const
     return priceFormatted;
 }
 
-std::string SteamGameStats::getAvgOwners() const
+std::string SteamGameStats::getAvgOwners()
 {
     //Use the variable SD, which is stored in R after reading the selected CSV file
     //Only considers the average number of owners (ignores + or - number of owners)
 
     //First split the string and then ignore the + or - (ex: 12,000 +-334 -> 12,000)
-    std::string ownersFormatted = "SD3 <- SD; SD3$Owners <- unlist(strsplit(as.character(SD3$Owners), " "))"
-                                  "SD3$Owners <- SD3$Owners[c(TRUE,FALSE)]"
-                                  "avgNumOwners <- as.numeric(SD3$Owners); ";
+    std::string ownersFormatted = "SD3 <- SD; SD3 <- unlist(strsplit(as.character(SD3$Owners), ' '));"
+                                  "SD3 <- SD3[c(TRUE,FALSE)];"
+                                  "SD3 <- gsub(',','',SD3,fixed=TRUE);"
+                                  "avgNumOwners <- as.numeric(SD3); ";
 
     return ownersFormatted;
 }

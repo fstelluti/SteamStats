@@ -47,8 +47,10 @@ private:
 
     int getNumGames() const;          // Statistic to get number of games
     double getAvgPrice() const;       // Statistic to get average price of all games
-    std::string getPrice() const;          //Gets the properly formatted price form the csv file
-    std::string getAvgOwners() const;          //Gets the properly formatted number of owners form the csv file
+    double getMaxPrice() const;       // Statistic to get Max price of all games
+
+    std::string getPrice();          //Gets the properly formatted price form the csv file
+    std::string getAvgOwners();          //Gets the properly formatted number of owners form the csv file
 
     QSvgWidget *m_svg;          // the SVG device
     RInside & m_R;              // reference to the R instance passed to constructor
@@ -59,6 +61,7 @@ private:
 
     int m_numGames;
     double m_avgPrice;
+    double m_maxPrice;
 };
 
 #endif
