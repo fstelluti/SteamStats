@@ -35,6 +35,8 @@ void SteamGameStats::setupDisplay(void)  {
     QLabel *numGamesLabel = new QLabel(QString::number(getNumGames()));
     QLabel *avgPriceLabel = new QLabel("$" + QString::number(getAvgPrice()));
     QLabel *maxPriceLabel = new QLabel("$" + QString::number(getMaxPrice()));
+    QLabel *avgMetaScoreLabel = new QLabel(QString::number(getNumGames())); //Change
+    QLabel *totalPlaytimeLabel = new QLabel(QString::number(getTotalPlaytime()));
 
     //Sales by year component
     QGroupBox *yearBox = new QGroupBox("Steam sales by timeframe");
@@ -81,6 +83,10 @@ void SteamGameStats::setupDisplay(void)  {
     topRight->addRow(tr("Number of Games:"), numGamesLabel);
     topRight->addRow(tr("Average Price:"), avgPriceLabel);
     topRight->addRow(tr("Maximum Price:"), maxPriceLabel);
+    topRight->addRow(tr("Average Metascore:"), avgMetaScoreLabel);
+    topRight->addRow(tr("Total Playtime (hrs):"), totalPlaytimeLabel);
+
+    //Avg Userscore + Total playtime
 
     //Set properties of estimationBox
     estimationBox->setMinimumSize(320,170);
@@ -113,11 +119,16 @@ void SteamGameStats::plot(void) {
 
     std::string svgFile = "svg(width=6,height=5,pointsize=10,filename=tfile); ";
     std::string price = getPrice();
-    std::string owners = getAvgOwners();
-    std::string data = "dataPriceOwners <- data.frame(price, avgNumOwners); ";
-    std::string plot = "print(ggplot(dataPriceOwners, aes(x=price, y=avgNumOwners, colour=avgNumOwners)) + geom_point(shape=16) "
+    std::string owners = getSelectElementsOfSet("Owners", true);
+    std::string data = "Owners <- as.numeric(Owners); dataPriceOwners <- data.frame(price, Owners); ";
+
+    //Axes are constrained to eliminate outliers from view only
+    //Best fit using a Local Polynomial Regression Model is used
+    std::string plot = "print(ggplot(dataPriceOwners, aes(x=price, y=Owners, colour=Owners)) + geom_point(shape=16) "
                        " + labs(title='Price vs Average number of Owners', x='Price', y='AvgNumOwners') "
-                       " + geom_smooth(method=lm,se=FALSE) + scale_colour_gradientn(colours=c('#FF3300', '#3366FF', '#00CCFF')) ); " ;
+                       " + geom_smooth(method=loess,se=FALSE) "
+                       " + scale_colour_gradientn(colours=  rainbow(7),guide=FALSE)"
+                       " + xlim(0,100) + ylim(0,200000) ); " ;
     std::string dev = "dev.off()";
 
     //Build command and execute in R
@@ -156,17 +167,25 @@ void SteamGameStats::getStatsByYear()
     std::string numGames = "nrow(SD)";    //Number of games (rows)
     std::string averagePrice = getPrice() + "avgPrice <- mean(price); avgPrice <- round(avgPrice, digits=2)";
     std::string maxPrice = getPrice() + "maxPrice <- max(price); maxPrice <- round(maxPrice, digits=2)";
+    //std::string avgMetascore = getSelectElementsOfSet("Userscore..Metascore.", false) +  ;  //TODO Giving all NAs for this column
+    std::string totalPlayTime = getSelectElementsOfSet("Playtime..Median.", true) + getNumberOfHoursPlayed();
 
     Rcpp::NumericVector v;  //Store result as a vector -- REMOVE?
 
     v[0] = m_R.parseEval(numGames);
-    m_numGames = v[0];  //First index of vector is the number of games
+    m_numGames = v[0];  //Store the number of games
 
     v[1] = m_R.parseEval(averagePrice);
-    m_avgPrice = v[1]; //Second index of vector is the average price
+    m_avgPrice = v[1]; //Store average price
 
     v[2] = m_R.parseEval(maxPrice);
-    m_maxPrice = v[2];
+    m_maxPrice = v[2]; //Store max price
+
+    //v[3] = m_R.parseEval(avgMetascore);
+    //m_avgMetascore = v[3];
+
+    v[4] = m_R.parseEval(totalPlayTime);
+    m_totalPlaytime = v[4];
 }
 
 int SteamGameStats::getNumGames() const
@@ -184,6 +203,16 @@ double SteamGameStats::getMaxPrice() const
     return m_maxPrice;
 }
 
+double SteamGameStats::getAvgMetascore() const
+{
+    return m_avgMetascore;
+}
+
+double SteamGameStats::getTotalPlaytime() const
+{
+    return m_totalPlaytime;
+}
+
 std::string SteamGameStats::getPrice()
 {
     //Use the variable SD, which is stored in R after reading the selected CSV file
@@ -197,18 +226,41 @@ std::string SteamGameStats::getPrice()
     return priceFormatted;
 }
 
-std::string SteamGameStats::getAvgOwners()
+std::string SteamGameStats::getSelectElementsOfSet(std::string column, bool isFirst)
 {
-    //Use the variable SD, which is stored in R after reading the selected CSV file
-    //Only considers the average number of owners (ignores + or - number of owners)
+    //First create a string that will select either the first or second element of each tuple
+    std::string elementSelect;
 
-    //First split the string and then ignore the + or - (ex: 12,000 +-334 -> 12,000)
-    std::string ownersFormatted = "SD3 <- SD; SD3 <- unlist(strsplit(as.character(SD3$Owners), ' '));"
-                                  "SD3 <- SD3[c(TRUE,FALSE)];"
-                                  "SD3 <- gsub(',','',SD3,fixed=TRUE);"
-                                  "avgNumOwners <- as.numeric(SD3); ";
+    if(isFirst)
+        elementSelect = "TRUE,FALSE";
+    else
+        elementSelect = "FALSE,TRUE";
+
+    //Use the variable SD, which is stored in R after reading the selected CSV file
+    //Now split the string and then ignore the first or second half of the tuple
+    //Save the result as the column name
+    std::string ownersFormatted = "SD3 <- SD; SD3 <- unlist(strsplit(as.character(SD3$" + column + "), ' '));"
+                                  "SD3 <- SD3[c(" + elementSelect + ")];"
+                                  + column + " <- gsub(',','',SD3,fixed=TRUE);" ;
 
     return ownersFormatted;
+}
+
+std::string SteamGameStats::getNumberOfHoursPlayed()
+{
+    //First split the time, in the format HH:MM, into two sets (hours and mins)
+    //Then convert mins to hours and sum the total number of hours
+
+    std::string numHoursPlayed =
+    "splitPlayTimes <-unlist(strsplit(as.character(Playtime..Median.), ':'));"
+    "splitPlayTimesHour <- splitPlayTimes[c(TRUE,FALSE)];"          //Get hours only
+    "splitPlayTimesMin <- splitPlayTimes[c(FALSE,TRUE)];"
+    "totalPlayTimesMin <- strptime(splitPlayTimesMin,'%M');"        //Get minutes only
+
+    //Sum all hours, rounded to 2 decimal places
+    "totalPlayTimes <- round((sum(totalPlayTimesMin$min)/60) + sum(as.numeric(splitPlayTimesHour)),2);" ;
+
+    return numHoursPlayed;
 }
 
 void SteamGameStats::filterFile() {

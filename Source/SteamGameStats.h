@@ -45,12 +45,16 @@ private:
     void plot(void);            // Run a plot of (Update later)
     void filterFile(void);      // modify the richer SVG produced by R
 
-    int getNumGames() const;          // Statistic to get number of games
-    double getAvgPrice() const;       // Statistic to get average price of all games
-    double getMaxPrice() const;       // Statistic to get Max price of all games
+    int getNumGames() const;          // Number of games
+    double getAvgPrice() const;       // Average price of all games
+    double getMaxPrice() const;       // Max price of all games
+    double getAvgMetascore() const;   // Average Metascore
+    double getTotalPlaytime() const;  // Total playtime of all games (in hours)
 
-    std::string getPrice();          //Gets the properly formatted price form the csv file
-    std::string getAvgOwners();          //Gets the properly formatted number of owners form the csv file
+    std::string getPrice();              //Gets the properly formatted price form the csv file
+    std::string getSelectElementsOfSet(std::string column, bool isFirst); //Gets the properly formatted first or second elements of
+                                                            //a set. If pass true, selects first elements (ex: [(2,1),(3,5)]->[2,3] )
+    std::string getNumberOfHoursPlayed(); //Get the total number of time played, in hours
 
     QSvgWidget *m_svg;          // the SVG device
     RInside & m_R;              // reference to the R instance passed to constructor
@@ -62,6 +66,9 @@ private:
     int m_numGames;
     double m_avgPrice;
     double m_maxPrice;
+    double m_avgMetascore;
+    double m_totalPlaytime;
+
 };
 
 #endif
