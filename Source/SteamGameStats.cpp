@@ -35,8 +35,8 @@ void SteamGameStats::setupDisplay(void)  {
     QLabel *numGamesLabel = new QLabel(QString::number(getNumGames()));
     QLabel *avgPriceLabel = new QLabel("$" + QString::number(getAvgPrice()));
     QLabel *maxPriceLabel = new QLabel("$" + QString::number(getMaxPrice()));
-    QLabel *avgMetaScoreLabel = new QLabel(QString::number(getNumGames())); //Change
-    QLabel *totalPlaytimeLabel = new QLabel(QString::number(getTotalPlaytime()));
+    QLabel *avgMetaScoreLabel = new QLabel(QString::number(getAvgMetascore()) + "%");
+    QLabel *totalPlaytimeLabel = new QLabel(QString::number(getTotalPlaytime()) + " hours");
 
     //Sales by year component
     QGroupBox *yearBox = new QGroupBox("Steam sales by timeframe");
@@ -84,7 +84,7 @@ void SteamGameStats::setupDisplay(void)  {
     topRight->addRow(tr("Average Price:"), avgPriceLabel);
     topRight->addRow(tr("Maximum Price:"), maxPriceLabel);
     topRight->addRow(tr("Average Metascore:"), avgMetaScoreLabel);
-    topRight->addRow(tr("Total Playtime (hrs):"), totalPlaytimeLabel);
+    topRight->addRow(tr("Total Playtime:"), totalPlaytimeLabel);
 
     //Avg Userscore + Total playtime
 
@@ -112,7 +112,7 @@ void SteamGameStats::setupDisplay(void)  {
     window->show();
 }
 
-//Make the plot variable
+//Make the plot variable?
 void SteamGameStats::plot(void) {
 
     //Currently, only a plot of the number of owners vs the price of a game
@@ -167,7 +167,9 @@ void SteamGameStats::getStatsByYear()
     std::string numGames = "nrow(SD)";    //Number of games (rows)
     std::string averagePrice = getPrice() + "avgPrice <- mean(price); avgPrice <- round(avgPrice, digits=2)";
     std::string maxPrice = getPrice() + "maxPrice <- max(price); maxPrice <- round(maxPrice, digits=2)";
-    //std::string avgMetascore = getSelectElementsOfSet("Userscore..Metascore.", false) +  ;  //TODO Giving all NAs for this column
+    std::string avgMetascore = getSelectElementsOfSet("Userscore..Metascore.", false) +
+                "avgMetascore <- gsub('\\\\(|\\\\)|\\\\%', '', Userscore..Metascore.);"   //Get rid of brackets and percent sign
+                "avgMetascore <- round(mean(as.numeric(avgMetascore),na.rm=TRUE),2);";    //Calculate the mean, ignoring N/A's and rounding to 2 decimal places
     std::string totalPlayTime = getSelectElementsOfSet("Playtime..Median.", true) + getNumberOfHoursPlayed();
 
     Rcpp::NumericVector v;  //Store result as a vector -- REMOVE?
@@ -181,8 +183,8 @@ void SteamGameStats::getStatsByYear()
     v[2] = m_R.parseEval(maxPrice);
     m_maxPrice = v[2]; //Store max price
 
-    //v[3] = m_R.parseEval(avgMetascore);
-    //m_avgMetascore = v[3];
+    v[3] = m_R.parseEval(avgMetascore);
+    m_avgMetascore = v[3];
 
     v[4] = m_R.parseEval(totalPlayTime);
     m_totalPlaytime = v[4];
