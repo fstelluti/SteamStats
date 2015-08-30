@@ -7,7 +7,7 @@ Plan is to have a wide range of statistical analysis performed on Steam data, an
 
 Early, prototype screenshot:
 
-![Screenshot](https://cloud.githubusercontent.com/assets/10926088/9373141/dc0fff00-46b4-11e5-8748-599505891338.png)
+![Screenshot](https://cloud.githubusercontent.com/assets/10926088/9569561/23ad2780-4f3d-11e5-89a4-aeab771c4ca7.png)
 
 Rinside: http://dirk.eddelbuettel.com/code/rinside.html
 
