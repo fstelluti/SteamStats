@@ -1,10 +1,11 @@
 //
 // A C++ GUI application that analyses and displays gaming statistics from Steam using R and Rinside
+// Initializes the GUI and uses SVG for the graph
 //
-// Copyright (C) 2011  Dirk Eddelbuettel and Romain Francois
+// Author: Francois Stelluti
 //
-// Modified by: Francois Stelluti
-
+// Original file by Dirk Eddelbuettel and Romain Francois - Copyright (C) 2011
+//
 
 #include <QApplication>
 #include "SteamGameStats.h"
