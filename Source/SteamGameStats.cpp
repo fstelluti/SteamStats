@@ -28,7 +28,7 @@ SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0
     avgMetaScoreLabel = new QLabel();
     totalPlaytimeLabel = new QLabel();
 
-    yearCombo = new QComboBox;
+    yearCombo = new QComboBox();
     estimationBox = new QGroupBox();
 
     //Initialize and display the GUI
@@ -52,25 +52,12 @@ void SteamGameStats::setupDisplay(void)  {
     yearCombo->addItem("2012");
     yearCombo->setFixedWidth(75);
 
-    //Calculate statistics and plot based on the default year selected
-//    QString defaultYear = QString::number(m_year);          //Convert year to string
-//    readFile("Data/" + defaultYear + "_SteamStats.csv");    //Read file
-//    getStatsByYear();                                       //Get all stats
-//    plot();      //TODO Change/modify
-
     m_svg = new QSvgWidget();   //Initialize svg object
 
-    generateStatsAndPlot(yearCombo->currentIndex());    //TODO Use this instead?
+    generateStatsAndPlot(yearCombo->currentIndex());    //Generate initial plot
 
     //Connect comboBox to stats displayed
     QObject::connect(yearCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(generateStatsAndPlot(int)));
-
-    //Set initial statistcs
-    numGamesLabel->setText(QString::number(getNumGames()));
-    avgPriceLabel->setText("$" + QString::number(getAvgPrice()));
-    maxPriceLabel->setText("$" + QString::number(getMaxPrice()));
-    avgMetaScoreLabel->setText(QString::number(getAvgMetascore()) + "%");
-    totalPlaytimeLabel->setText(QString::number(getTotalPlaytime()) + " hours");
 
     //Add comboBox to 'Steam sales by year'
     QFormLayout *topLeft = new QFormLayout;
@@ -80,9 +67,6 @@ void SteamGameStats::setupDisplay(void)  {
     yearBox->setMinimumSize(320,170);
     yearBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     yearBox->setLayout(topLeft);
-
-    //Game statistics component
-    estimationBox->setTitle("Game Stats for:    " + QString::number(m_year));
 
     //Add each statistic to 'Game Stats'
     QFormLayout *topRight = new QFormLayout;
@@ -121,9 +105,6 @@ void SteamGameStats::plot()
 {
     //TODO Currently, only a plot of the number of owners vs the price of a game
 
-    //QString file = "/home/swag/Desktop/Github/R_SteamStats/test.svg";
-    //std::string fileS = "/home/swag/Desktop/Github/R_SteamStats/test.svg";
-
     std::string svgFile = "svg(filename=tfile,width=6,height=5,pointsize=10); ";
     std::string price = getPrice();
     std::string owners = getSelectElementsOfSet("Owners", true);
@@ -137,23 +118,12 @@ void SteamGameStats::plot()
                        " + scale_colour_gradientn(colours=rainbow(7),guide=FALSE)"
                        " + xlim(0,100) + ylim(0,200000) ); " ;  //TODO plot - Doesn't work with other years
 
-    //Testing plot
-    int plotvar = rand() % 100 + 1;
-    std::string lala2 = std::to_string(plotvar);
-    std::string plot2 = "plot(density(1:" + lala2 + "));" ;  //This Works, but eventually crashes
-    //std::string plot2 = "print(ggplot(dataPriceOwners, aes(x=price, y=Owners)) + geom_point(shape=16));";
-
     std::string dev = "dev.off();";
-
-    //Alternate saving method
-    std::string svgSave = "ggsave(file='/home/swag/Desktop/Github/R_SteamStats/test.svg', plot=image, width=6, height=5);";
 
     //Build command and execute in R
     std::string cmd = svgFile + price + owners + data + plot + dev;
-    //std::string cmd = price + owners + data + plot + svgSave;
 
-    m_R.parseEvalQ(cmd);        //Parse and execute the string from R  --- FAILS here segmentation fault
-    std::cout << "Plot grrrr" << std::endl;
+    m_R.parseEvalQ(cmd);        //Parse and execute the string from R
     filterFile();               //Simplify the svg file for display by Qt
     m_svg->load(m_svgfile);
 
@@ -184,22 +154,13 @@ void SteamGameStats::getStatsByYear()
                 "avgMetascore <- round(mean(as.numeric(avgMetascore),na.rm=TRUE),2);";    //Calculate the mean, ignoring N/A's and rounding to 2 decimal places
     std::string totalPlayTime = getSelectElementsOfSet("Playtime..Median.", true) + getNumberOfHoursPlayed();
 
-    Rcpp::NumericVector v;  //Store result as a vector -- REMOVE?
+    //Store the results
+    m_numGames = m_R.parseEval(numGames);
+    m_avgPrice = m_R.parseEval(averagePrice);
+    m_maxPrice = m_R.parseEval(maxPrice);
+    m_avgMetascore = m_R.parseEval(avgMetascore);
+    m_totalPlaytime = m_R.parseEval(totalPlayTime);
 
-    v[0] = m_R.parseEval(numGames);
-    m_numGames = v[0];  //Store the number of games
-
-    v[1] = m_R.parseEval(averagePrice);
-    m_avgPrice = v[1]; //Store average price
-
-    v[2] = m_R.parseEval(maxPrice);
-    m_maxPrice = v[2]; //Store max price
-
-    v[3] = m_R.parseEval(avgMetascore);
-    m_avgMetascore = v[3];
-
-    v[4] = m_R.parseEval(totalPlayTime);
-    m_totalPlaytime = v[4];
 }
 
 int SteamGameStats::getNumGames() const
