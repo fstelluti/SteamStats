@@ -45,7 +45,7 @@ private slots:
 
 private:
     void setupDisplay(void);    // Set up the GUI components
-    void plot(void);            // Run a plot of (Update later)
+    void plot();            // Run a plot of (Update later)
     void filterFile(void);      // modify the richer SVG produced by R
 
     int getNumGames() const;          // Number of games

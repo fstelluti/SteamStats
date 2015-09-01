@@ -58,3 +58,6 @@ QMAKE_LIBS +=           $$RLDFLAGS $$RBLAS $$RLAPACK $$RINSIDELIBS $$RCPPLIBS
 
 ## addition clean targets
 QMAKE_CLEAN +=		WordFrequency Makefile
+
+## use c++11
+CONFIG += c++11
