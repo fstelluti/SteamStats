@@ -2,11 +2,15 @@
 // A C++ GUI application that analyses and displays gaming statistics from Steam using R and Rinside
 // Initializes the GUI and uses SVG for the graph
 //
-// Copyright (C) 2011  Dirk Eddelbuettel and Romain Francois
+// Author: Francois Stelluti
 //
-// Modified by: Francois Stelluti
+// Original file by Dirk Eddelbuettel and Romain Francois - Copyright (C) 2011
+//
 
 #include "SteamGameStats.h"
+#include <exception>
+#include <iostream>
+#include <stdlib.h>
 
 //Constructor sets to default year to 2015, the number of games considered and average price to zero.
 SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0), m_avgPrice(0.0)
@@ -15,7 +19,17 @@ SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0
     m_tempfile = QString::fromStdString(Rcpp::as<std::string>(m_R.parseEval("tfile <- tempfile()")));
     m_svgfile = QString::fromStdString(Rcpp::as<std::string>(m_R.parseEval("sfile <- tempfile()")));
 
-    m_R.parseEvalQ("library(ggplot2)");    //Load the ggplot2 library
+    m_R.parseEvalQ("library(ggplot2);");    //Load the ggplot2 library
+
+    //Instantiate labels and other UI components for each statistic
+    numGamesLabel = new QLabel();
+    avgPriceLabel = new QLabel();
+    maxPriceLabel = new QLabel();
+    avgMetaScoreLabel = new QLabel();
+    totalPlaytimeLabel = new QLabel();
+
+    yearCombo = new QComboBox();
+    estimationBox = new QGroupBox();
 
     //Initialize and display the GUI
     setupDisplay();
@@ -28,55 +42,31 @@ void SteamGameStats::setupDisplay(void)  {
     QWidget *window = new QWidget;
     window->setWindowTitle("Steam Stats with using Rinside");
 
-    readFile("Data/2015_SteamStats.csv");   //Read file -- Change when using multiple files
-    getStatsByYear();                       //Get all stats
-
-    //Labels for each statistic
-    QLabel *numGamesLabel = new QLabel(QString::number(getNumGames()));
-    QLabel *avgPriceLabel = new QLabel("$" + QString::number(getAvgPrice()));
-    QLabel *maxPriceLabel = new QLabel("$" + QString::number(getMaxPrice()));
-    QLabel *avgMetaScoreLabel = new QLabel(QString::number(getAvgMetascore()) + "%");
-    QLabel *totalPlaytimeLabel = new QLabel(QString::number(getTotalPlaytime()) + " hours");
-
     //Sales by year component
     QGroupBox *yearBox = new QGroupBox("Steam sales by timeframe");
 
     //Year selection comboBox
-    QComboBox *yearCombo = new QComboBox;
-    yearCombo->addItem("2015",0);
-    yearCombo->addItem("2014",1);
-    yearCombo->addItem("2013",1);
-    yearCombo->addItem("2012",1);
-
+    yearCombo->addItem("2015");
+    yearCombo->addItem("2014");
+    yearCombo->addItem("2013");
+    yearCombo->addItem("2012");
     yearCombo->setFixedWidth(75);
+
+    m_svg = new QSvgWidget();   //Initialize svg object
+
+    generateStatsAndPlot(yearCombo->currentIndex());    //Generate initial plot
+
+    //Connect comboBox to stats displayed
+    QObject::connect(yearCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(generateStatsAndPlot(int)));
 
     //Add comboBox to 'Steam sales by year'
     QFormLayout *topLeft = new QFormLayout;
     topLeft->addRow(tr("Select year:"), yearCombo);
-    //topLeft->addWidget(combo);
-    //topLeft->setAlignment(combo,Qt::AlignLeft);
 
     //Set properties of yearBox
     yearBox->setMinimumSize(320,170);
     yearBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     yearBox->setLayout(topLeft);
-
-    QButtonGroup *kernelGroup = new QButtonGroup;
-    //kernelGroup->addButton(radio1, 0);
-    //kernelGroup->addButton(radio2, 1);
-    //kernelGroup->addButton(radio3, 2);
-    //kernelGroup->addButton(radio4, 3);
-    //kernelGroup->addButton(radio5, 4);
-    //QObject::connect(kernelGroup, SIGNAL(buttonClicked(int)), this, SLOT(getKernel(int)));
-
-    //Need a method when selected other year
-    //Assume it is 2015 for now
-
-    m_svg = new QSvgWidget();
-    plot();
-
-    //Game statistics component
-    QGroupBox *estimationBox = new QGroupBox("Game Stats");
 
     //Add each statistic to 'Game Stats'
     QFormLayout *topRight = new QFormLayout;
@@ -85,8 +75,6 @@ void SteamGameStats::setupDisplay(void)  {
     topRight->addRow(tr("Maximum Price:"), maxPriceLabel);
     topRight->addRow(tr("Average Metascore:"), avgMetaScoreLabel);
     topRight->addRow(tr("Total Playtime:"), totalPlaytimeLabel);
-
-    //Avg Userscore + Total playtime
 
     //Set properties of estimationBox
     estimationBox->setMinimumSize(320,170);
@@ -112,12 +100,12 @@ void SteamGameStats::setupDisplay(void)  {
     window->show();
 }
 
-//Make the plot variable?
-void SteamGameStats::plot(void) {
+//TODO Make the plot variable?
+void SteamGameStats::plot()
+{
+    //TODO Currently, only a plot of the number of owners vs the price of a game
 
-    //Currently, only a plot of the number of owners vs the price of a game
-
-    std::string svgFile = "svg(width=6,height=5,pointsize=10,filename=tfile); ";
+    std::string svgFile = "svg(filename=tfile,width=6,height=5,pointsize=10); ";
     std::string price = getPrice();
     std::string owners = getSelectElementsOfSet("Owners", true);
     std::string data = "Owners <- as.numeric(Owners); dataPriceOwners <- data.frame(price, Owners); ";
@@ -127,20 +115,19 @@ void SteamGameStats::plot(void) {
     std::string plot = "print(ggplot(dataPriceOwners, aes(x=price, y=Owners, colour=Owners)) + geom_point(shape=16) "
                        " + labs(title='Price vs Average number of Owners', x='Price', y='AvgNumOwners') "
                        " + geom_smooth(method=loess,se=FALSE) "
-                       " + scale_colour_gradientn(colours=  rainbow(7),guide=FALSE)"
-                       " + xlim(0,100) + ylim(0,200000) ); " ;
-    std::string dev = "dev.off()";
+                       " + scale_colour_gradientn(colours=rainbow(7),guide=FALSE)"
+                       " + xlim(0,100) + ylim(0,200000) ); " ;  //TODO plot - Doesn't work with other years
+
+    std::string dev = "dev.off();";
 
     //Build command and execute in R
     std::string cmd = svgFile + price + owners + data + plot + dev;
 
     m_R.parseEvalQ(cmd);        //Parse and execute the string from R
-    filterFile();           	//Simplify the svg file for display by Qt
+    filterFile();               //Simplify the svg file for display by Qt
     m_svg->load(m_svgfile);
-}
 
-//CHANGE??
-//Use: df <- read.csv("2015_SteamStats.csv", header=TRUE) P <- df$Price ,etc to get stats
+}
 
 void SteamGameStats::setSteamYearDataFile(int year) {
     if( year != m_year)
@@ -159,11 +146,6 @@ void SteamGameStats::readFile(QString file)
 
 void SteamGameStats::getStatsByYear()
 {
-    //Set the year
-    setSteamYearDataFile(m_year);
-
-    //Switch? IF? Assume it's only 2015 for now. Use vector to store different results?
-
     std::string numGames = "nrow(SD)";    //Number of games (rows)
     std::string averagePrice = getPrice() + "avgPrice <- mean(price); avgPrice <- round(avgPrice, digits=2)";
     std::string maxPrice = getPrice() + "maxPrice <- max(price); maxPrice <- round(maxPrice, digits=2)";
@@ -172,22 +154,13 @@ void SteamGameStats::getStatsByYear()
                 "avgMetascore <- round(mean(as.numeric(avgMetascore),na.rm=TRUE),2);";    //Calculate the mean, ignoring N/A's and rounding to 2 decimal places
     std::string totalPlayTime = getSelectElementsOfSet("Playtime..Median.", true) + getNumberOfHoursPlayed();
 
-    Rcpp::NumericVector v;  //Store result as a vector -- REMOVE?
+    //Store the results
+    m_numGames = m_R.parseEval(numGames);
+    m_avgPrice = m_R.parseEval(averagePrice);
+    m_maxPrice = m_R.parseEval(maxPrice);
+    m_avgMetascore = m_R.parseEval(avgMetascore);
+    m_totalPlaytime = m_R.parseEval(totalPlayTime);
 
-    v[0] = m_R.parseEval(numGames);
-    m_numGames = v[0];  //Store the number of games
-
-    v[1] = m_R.parseEval(averagePrice);
-    m_avgPrice = v[1]; //Store average price
-
-    v[2] = m_R.parseEval(maxPrice);
-    m_maxPrice = v[2]; //Store max price
-
-    v[3] = m_R.parseEval(avgMetascore);
-    m_avgMetascore = v[3];
-
-    v[4] = m_R.parseEval(totalPlayTime);
-    m_totalPlaytime = v[4];
 }
 
 int SteamGameStats::getNumGames() const
@@ -265,6 +238,40 @@ std::string SteamGameStats::getNumberOfHoursPlayed()
     return numHoursPlayed;
 }
 
+void SteamGameStats::generateStatsAndPlot(int comboIndex)
+{
+
+    //Make sure that the selected year exists
+    try
+    {
+
+        QString yearStr = yearCombo->itemText(comboIndex);
+        int yearInt = yearCombo->itemText(comboIndex).toInt();
+
+        //Sets the year, which is used when updating the display
+        setSteamYearDataFile(yearInt);
+
+        readFile("Data/" + yearStr + "_SteamStats.csv");   //Read file
+        getStatsByYear();                                  //Get all stats
+
+        estimationBox->setTitle("Game Stats for:    " + QString::number(m_year));  //Display the year in the title
+
+        numGamesLabel->setText(QString::number(getNumGames()));
+        avgPriceLabel->setText("$" + QString::number(getAvgPrice()));
+        maxPriceLabel->setText("$" + QString::number(getMaxPrice()));
+        avgMetaScoreLabel->setText(QString::number(getAvgMetascore()) + "%");
+        totalPlaytimeLabel->setText(QString::number(getTotalPlaytime()) + " hours");
+
+        plot();            //Plot the data    TODO: Add parameter for year?
+
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "Selected year invalid. Exception: " << e.what() << std::endl;
+    }
+}
+
+//Author: Eddelbuettel and Romain Francois - Copyright (C) 2011
 void SteamGameStats::filterFile() {
     // cairoDevice creates richer SVG than Qt can display
     // but per Michaele Lawrence, a simple trick is to s/symbol/g/ which we do here
