@@ -27,9 +27,15 @@ SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0
     maxPriceLabel = new QLabel();
     avgMetaScoreLabel = new QLabel();
     totalPlaytimeLabel = new QLabel();
+    corrCoefficientLabel = new QLabel("Coeff: ");    //The Correlation coefficient
+    p_valueLabel = new QLabel("p-value: ");    //p-value for the correlation test
+    correlationTestMessageLabel = new QLabel();
+    correlationTestResultLabel = new QLabel();
 
     yearCombo = new QComboBox();
     estimationBox = new QGroupBox();
+
+    correlationButton = new QPushButton("Correlation Test");
 
     //Initialize and display the GUI
     setupDisplay();
@@ -37,7 +43,8 @@ SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0
 
 SteamGameStats::~SteamGameStats() {}
 
-void SteamGameStats::setupDisplay(void)  {
+void SteamGameStats::setupDisplay(void)
+{
     //Window name
     QWidget *window = new QWidget;
     window->setWindowTitle("Steam Stats with using Rinside");
@@ -52,6 +59,10 @@ void SteamGameStats::setupDisplay(void)  {
     yearCombo->addItem("2012");
     yearCombo->setFixedWidth(75);
 
+    //Set properties of correlation button
+    correlationButton->setToolTip("Correlation Test using Pearson's' coefficient");
+    correlationButton->setMaximumWidth(130);
+
     m_svg = new QSvgWidget();   //Initialize svg object
 
     generateStatsAndPlot(yearCombo->currentIndex());    //Generate initial plot
@@ -59,9 +70,22 @@ void SteamGameStats::setupDisplay(void)  {
     //Connect comboBox to stats displayed
     QObject::connect(yearCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(generateStatsAndPlot(int)));
 
-    //Add comboBox to 'Steam sales by year'
-    QFormLayout *topLeft = new QFormLayout;
+    //TODO Connect Correlaton test button
+    QObject::connect(correlationButton, SIGNAL(released()), this, SLOT(displayCorrelationTest()));
+
+    //Use these layouts to display multiple labels in one line
+    QHBoxLayout *horizontalLayout1 = new QHBoxLayout();
+    horizontalLayout1->addWidget(p_valueLabel);
+    horizontalLayout1->addWidget(corrCoefficientLabel);
+    QHBoxLayout *horizontalLayout2 = new QHBoxLayout();
+    horizontalLayout2->addWidget(correlationButton);
+    horizontalLayout2->addWidget(correlationTestResultLabel);
+
+    //Add year selection and correlation test TODO: Add more?
+    QFormLayout *topLeft = new QFormLayout();
     topLeft->addRow(tr("Select year:"), yearCombo);
+    topLeft->addRow(horizontalLayout2);
+    topLeft->addRow(horizontalLayout1);
 
     //Set properties of yearBox
     yearBox->setMinimumSize(320,170);
@@ -100,15 +124,15 @@ void SteamGameStats::setupDisplay(void)  {
     window->show();
 }
 
-//TODO Make the plot variable?
+//TODO Make the plot variable? And/or plot type?
 void SteamGameStats::plot()
 {
     //TODO Currently, only a plot of the number of owners vs the price of a game
 
     std::string svgFile = "svg(filename=tfile,width=6,height=5,pointsize=10); ";
     std::string price = getPrice();
-    std::string owners = getSelectElementsOfSet("Owners", true);
-    std::string data = "Owners <- as.numeric(Owners); dataPriceOwners <- data.frame(price, Owners); ";
+    std::string owners = getSelectElementsOfSet("Owners", true) + "Owners <- as.numeric(Owners);";
+    std::string data = "dataPriceOwners <- data.frame(price, Owners); ";
 
     //Axes are constrained to eliminate outliers from view only
     //Best fit using a Local Polynomial Regression Model is used
@@ -119,6 +143,9 @@ void SteamGameStats::plot()
                        " + xlim(0,100) + ylim(0,200000) ); " ;  //TODO plot - Doesn't work with other years
 
     std::string dev = "dev.off();";
+
+    //Run the correlation test, use names of variables that are used in R
+    correlationTest(price, owners, "price","Owners");
 
     //Build command and execute in R
     std::string cmd = svgFile + price + owners + data + plot + dev;
@@ -140,7 +167,6 @@ void SteamGameStats::readFile(QString file)
 
     //Command to read the csv file
     std::string cmd = "SD <- read.csv(\"~/Desktop/Github/R_SteamStats/" + file.toStdString() + "\", header=TRUE)";
-    m_R["SD"] = cmd;            //Store variable in R for future use
     m_R.parseEvalQNT(cmd);      //Parse and execute the command string
 }
 
@@ -186,6 +212,47 @@ double SteamGameStats::getAvgMetascore() const
 double SteamGameStats::getTotalPlaytime() const
 {
     return m_totalPlaytime;
+}
+
+double SteamGameStats::getPValue() const
+{
+    return m_p_value;
+}
+
+double SteamGameStats::getCorrCoefficiant() const
+{
+    return m_corrCoeff;
+}
+
+void SteamGameStats::correlationTest(std::string variable1, std::string variable2, std::string name1, std::string name2) {
+
+    //Compute the Pearson product-moment correlation coefficient to see if there is a positive or negative,
+    //statistically significant correlation. Assuming an alpha of 0.05 to compare with the p-value
+
+    //First, evaluate the variables in R
+    m_R.parseEvalQ(variable1);
+    m_R.parseEvalQ(variable2);
+
+    //Use the variable names in subsequent commands. First preform the correlation test
+    std::string correlationTest = "corrTest <-cor.test(" + name1 + "," + name2 + ", use='complete.obs'); ";
+
+    //Extract the p-value and coefficient and store the results
+    std::string p_value = "pVal <-corrTest$p.value; pVal <-round(pVal,digits=4);";
+    std::string corrCoeff = "corrEst <-corrTest$estimate; corrEst <-round(corrEst,digits=4)";
+
+    m_p_value = m_R.parseEval(correlationTest + p_value);
+    m_corrCoeff = m_R.parseEval(correlationTest + corrCoeff);
+
+}
+
+void SteamGameStats::displayCorrelationTest(void)
+{
+    //Display a message depending on the p_value and correlation coefficient
+    //TODO
+
+    //Display the p_value and correlation coefficient
+    p_valueLabel->setText("p-value: " + QString::number(getPValue()));
+    corrCoefficientLabel->setText("Coeff: " + QString::number(getCorrCoefficiant()));
 }
 
 std::string SteamGameStats::getPrice()
@@ -241,7 +308,7 @@ std::string SteamGameStats::getNumberOfHoursPlayed()
 void SteamGameStats::generateStatsAndPlot(int comboIndex)
 {
 
-    //Make sure that the selected year exists
+    //Make sure that the selected year exists, or that another exception isn't thrown
     try
     {
 
@@ -267,7 +334,7 @@ void SteamGameStats::generateStatsAndPlot(int comboIndex)
     }
     catch (std::exception &e)
     {
-        std::cout << "Selected year invalid. Exception: " << e.what() << std::endl;
+        std::cout << "Exception: " << e.what() << std::endl;
     }
 }
 

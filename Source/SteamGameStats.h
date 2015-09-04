@@ -28,6 +28,7 @@
 #include <QLabel>
 #include <QTemporaryFile>
 #include <QSvgWidget>
+#include <QPushButton>
 
 class SteamGameStats : public QMainWindow
 {
@@ -42,17 +43,24 @@ private slots:
     void readFile(QString file);         //Reads file into R
     void getStatsByYear();               //Get all statistics based on selected year
     void generateStatsAndPlot(int comboIndex);   //Generate the plot and statistics for the window based on the year selected
+    void displayCorrelationTest(void);   //Display the results of the correlation test
 
 private:
     void setupDisplay(void);    // Set up the GUI components
-    void plot();            // Run a plot of (Update later)
+    void plot(void);            // Run a plot of (Update later)
     void filterFile(void);      // modify the richer SVG produced by R
+
+    //Perform a correlation test on two variables (as R commands) from the graph.
+    //Also supply the names of those variables directly, which should be the same as in the one used in R
+    void correlationTest(std::string var1, std::string var2, std::string name1, std::string name2);
 
     int getNumGames() const;          // Number of games
     double getAvgPrice() const;       // Average price of all games
     double getMaxPrice() const;       // Max price of all games
     double getAvgMetascore() const;   // Average Metascore
     double getTotalPlaytime() const;  // Total playtime of all games (in hours)
+    double getPValue() const;         // p-value from the correlation test
+    double getCorrCoefficiant() const;// Correlation Coefficient from the correlation test
 
     std::string getPrice();              //Gets the properly formatted price form the csv file
     std::string getSelectElementsOfSet(std::string column, bool isFirst); //Gets the properly formatted first or second elements of
@@ -71,13 +79,17 @@ private:
     double m_maxPrice;
     double m_avgMetascore;
     double m_totalPlaytime;
+    double m_p_value;
+    double m_corrCoeff;
 
     //Labels for each statistic
     QLabel *numGamesLabel, *avgPriceLabel, *maxPriceLabel, *avgMetaScoreLabel, *totalPlaytimeLabel;
+    QLabel *corrCoefficientLabel, *p_valueLabel, *correlationTestMessageLabel, *correlationTestResultLabel;
 
     //Other UI components
     QComboBox *yearCombo;
     QGroupBox *estimationBox;
+    QPushButton *correlationButton; //Used to preform a correlation test
 
 };
 
