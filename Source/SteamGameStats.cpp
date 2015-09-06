@@ -247,12 +247,27 @@ void SteamGameStats::correlationTest(std::string variable1, std::string variable
 
 void SteamGameStats::displayCorrelationTest(void)
 {
+    //Store the p_value and correlation coefficient
+    double pValue = getPValue();
+    double corrCoeff = getCorrCoefficiant();
+
     //Display a message depending on the p_value and correlation coefficient
-    //TODO
+    //First, if the p-value is too high, results are not statistically significant (use alpha of 0.05)
+    if(pValue > 0.05)
+        correlationTestResultLabel->setText("Not statistically sig.");
+    //Consider the Pearson coefficient
+    else {
+        if(corrCoeff > 0.7)
+            correlationTestResultLabel->setText("Strong positive correlation");
+        else if(corrCoeff < -0.7)
+            correlationTestResultLabel->setText("Strong negative correlation");
+        else
+            correlationTestResultLabel->setText("No sig. correlation");
+    }
 
     //Display the p_value and correlation coefficient
-    p_valueLabel->setText("p-value: " + QString::number(getPValue()));
-    corrCoefficientLabel->setText("Coeff: " + QString::number(getCorrCoefficiant()));
+    p_valueLabel->setText("p-value: " + QString::number(pValue));
+    corrCoefficientLabel->setText("Coeff: " + QString::number(corrCoeff));
 }
 
 std::string SteamGameStats::getPrice()
@@ -314,6 +329,11 @@ void SteamGameStats::generateStatsAndPlot(int comboIndex)
 
         QString yearStr = yearCombo->itemText(comboIndex);
         int yearInt = yearCombo->itemText(comboIndex).toInt();
+
+        //Clear the corrletion test labels
+        correlationTestResultLabel->setText("");
+        corrCoefficientLabel->setText("Coeff: ");
+        p_valueLabel->setText("p-value: ");
 
         //Sets the year, which is used when updating the display
         setSteamYearDataFile(yearInt);
