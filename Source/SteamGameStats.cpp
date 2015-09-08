@@ -28,7 +28,7 @@ SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0
     avgMetaScoreLabel = new QLabel();
     totalPlaytimeLabel = new QLabel();
     corrCoefficientLabel = new QLabel("Coeff: ");    //The Correlation coefficient
-    p_valueLabel = new QLabel("p-value: ");    //p-value for the correlation test
+    p_valueLabel = new QLabel("p-value: ");          //p-value for the correlation test
     correlationTestMessageLabel = new QLabel();
     correlationTestResultLabel = new QLabel();
 
@@ -70,7 +70,7 @@ void SteamGameStats::setupDisplay(void)
     //Connect comboBox to stats displayed
     QObject::connect(yearCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(generateStatsAndPlot(int)));
 
-    //TODO Connect Correlaton test button
+    //Connect Correlaton test button
     QObject::connect(correlationButton, SIGNAL(released()), this, SLOT(displayCorrelationTest()));
 
     //Use these layouts to display multiple labels in one line
@@ -124,36 +124,86 @@ void SteamGameStats::setupDisplay(void)
     window->show();
 }
 
-//TODO Make the plot variable? And/or plot type?
-void SteamGameStats::plot()
+void SteamGameStats::plot(plotVariable x_axis, plotVariable y_axis)
 {
-    //TODO Currently, only a plot of the number of owners vs the price of a game
+    //Declare both variables as strings to be evaluated by R
+    std::string xVariableStatement, yVariableStatement;
 
+    //Also decalre each variable name, to use within R
+    std::string x_VariableName, y_VariableName;
+
+    //Set up the SVG file
     std::string svgFile = "svg(filename=tfile,width=6,height=5,pointsize=10); ";
-    std::string price = getPrice();
-    std::string owners = getSelectElementsOfSet("Owners", true) + "Owners <- as.numeric(Owners);";
-    std::string data = "dataPriceOwners <- data.frame(price, Owners); ";
+
+    //Get the data for the x_axis and y_axis
+    getPlotData(xVariableStatement, x_VariableName, x_axis);
+    getPlotData(yVariableStatement, y_VariableName, y_axis);
+
+    //Construct the data to pass into the plot
+    std::string data = "dataPlot <- data.frame(" + x_VariableName + ", " + y_VariableName + "); ";
 
     //Axes are constrained to eliminate outliers from view only
     //Best fit using a Local Polynomial Regression Model is used
-    std::string plot = "print(ggplot(dataPriceOwners, aes(x=price, y=Owners, colour=Owners)) + geom_point(shape=16) "
-                       " + labs(title='Price vs Average number of Owners', x='Price', y='AvgNumOwners') "
+    std::string plot = "print(ggplot(dataPlot, aes(x=" + x_VariableName + ","  + y_VariableName + ", colour=" + y_VariableName +")) + geom_point(shape=16) "
+                       " + labs(title='" + x_VariableName + " vs " + y_VariableName + "', x='" + x_VariableName + "', y='" + y_VariableName + "') "
                        " + geom_smooth(method=loess,se=FALSE) "
-                       " + scale_colour_gradientn(colours=rainbow(7),guide=FALSE)"
-                       " + xlim(0,100) + ylim(0,200000) ); " ;  //TODO plot - Doesn't work with other years
+                       " + scale_colour_gradientn(colours=rainbow(7),guide=FALSE) );" ;
+                      // " + xlim(0,100) + ylim(0,200000) ); " ;
 
-    std::string dev = "dev.off();";
+                      //TODO Find a way to better fit data + Double check correlation test analysis
+
+    std::string dev = "dev.off();";     //End of SVG file
 
     //Run the correlation test, use names of variables that are used in R
-    correlationTest(price, owners, "price","Owners");
+    correlationTest(xVariableStatement, yVariableStatement, x_VariableName, y_VariableName);
 
     //Build command and execute in R
-    std::string cmd = svgFile + price + owners + data + plot + dev;
+    std::string cmd = svgFile + xVariableStatement + yVariableStatement + data + plot + dev;
 
     m_R.parseEvalQ(cmd);        //Parse and execute the string from R
     filterFile();               //Simplify the svg file for display by Qt
     m_svg->load(m_svgfile);
 
+}
+
+void SteamGameStats::getPlotData(std::string &_VariableStatement, std::string &_VariableName, plotVariable &_axis)
+{
+    //Get both the statement to pass into R and the variable name (used in plotting the data) from the plotVariable enum
+    switch (_axis)
+    {
+        case Price:
+        {
+            _VariableStatement = getPrice();
+            _VariableName = "price";
+            break;
+        }
+        case Userscore:
+        {
+            _VariableStatement = getSelectElementsOfSet("Userscore..Metascore.", true) + //Gets User score
+                    "userscore <- gsub('\\\\(|\\\\)|\\\\%', '', Userscore..Metascore.);"   //Get rid of brackets and percent sign
+                    "userscore <- as.numeric(userscore);";
+            _VariableName = "userscore";
+            break;
+        }
+        case Owners:
+        {
+            _VariableStatement = getSelectElementsOfSet("Owners", true) + "Owners <-as.numeric(Owners);";
+            _VariableName = "Owners";
+            break;
+        }
+        case Playtime:
+        {
+            //Consider number of hours only
+            _VariableStatement = "splitPlayTimes <-unlist(strsplit(as.character(Playtime..Median.), ':'));"
+                        "playtime <- splitPlayTimes[c(TRUE,FALSE)]; playtime <-as.numeric(playtime);";       //Get hours only
+            _VariableName = "playtime";
+            break;
+        }
+        default:
+        {
+            std::cout << "Error, invalid variable" << std::endl;
+        }
+    }
 }
 
 void SteamGameStats::setSteamYearDataFile(int year) {
@@ -298,7 +348,7 @@ std::string SteamGameStats::getSelectElementsOfSet(std::string column, bool isFi
     //Save the result as the column name
     std::string ownersFormatted = "SD3 <- SD; SD3 <- unlist(strsplit(as.character(SD3$" + column + "), ' '));"
                                   "SD3 <- SD3[c(" + elementSelect + ")];"
-                                  + column + " <- gsub(',','',SD3,fixed=TRUE);" ;
+                                  + column + " <- gsub(',','',SD3,fixed=TRUE);";
 
     return ownersFormatted;
 }
@@ -349,7 +399,7 @@ void SteamGameStats::generateStatsAndPlot(int comboIndex)
         avgMetaScoreLabel->setText(QString::number(getAvgMetascore()) + "%");
         totalPlaytimeLabel->setText(QString::number(getTotalPlaytime()) + " hours");
 
-        plot();            //Plot the data    TODO: Add parameter for year?
+        plot(plotVariable::Price, plotVariable::Owners);     //Plot the data TODO: Change to selected comboBox values
 
     }
     catch (std::exception &e)

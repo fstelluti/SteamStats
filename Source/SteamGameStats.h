@@ -46,9 +46,21 @@ private slots:
     void displayCorrelationTest(void);   //Display the results of the correlation test
 
 private:
-    void setupDisplay(void);    // Set up the GUI components
-    void plot(void);            // Run a plot of (Update later)
-    void filterFile(void);      // modify the richer SVG produced by R
+
+    //Enum to store plot variable names
+    enum plotVariable {
+        Price,
+        Userscore,
+        Owners,
+        Playtime
+    };
+
+    void setupDisplay(void);                                // Set up the GUI components
+    void plot(plotVariable x_axis, plotVariable y_axis);    // Run a plot of two selected variables, defined in plotVariable
+    void filterFile(void);                                  // modify the richer SVG produced by R
+
+    //Gets the correct data for the plot. Pass paramaters by reference to be able to use global variables
+    void getPlotData(std::string &_VariableStatement, std::string &_VariableName, plotVariable &_axis);
 
     //Perform a correlation test on two variables (as R commands) from the graph.
     //Also supply the names of those variables directly, which should be the same as in the one used in R
