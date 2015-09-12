@@ -7,8 +7,9 @@ Plan is to have a wide range of statistical analysis performed on Steam data, an
 
 Screenshots:
 
-![plot1](https://cloud.githubusercontent.com/assets/10926088/9695752/1165e036-5333-11e5-910f-e8ecd48306dd.png)
-![plot2](https://cloud.githubusercontent.com/assets/10926088/9695753/1174aa26-5333-11e5-9220-79f73830eb23.png)
+![plot1](https://cloud.githubusercontent.com/assets/10926088/9829391/5a62a736-58d0-11e5-9f1d-c1bbcca7d7ab.png)
+![plot2](https://cloud.githubusercontent.com/assets/10926088/9829390/5a627612-58d0-11e5-8964-3af719dbb4f9.png)
+![plot3](https://cloud.githubusercontent.com/assets/10926088/9829392/5a672810-58d0-11e5-9807-4c99c7e2a090.png)
 
 Rinside: http://dirk.eddelbuettel.com/code/rinside.html
 
