@@ -33,9 +33,12 @@ SteamGameStats::SteamGameStats(RInside & R) : m_R(R), m_year(2015), m_numGames(0
     correlationTestResultLabel = new QLabel();
 
     yearCombo = new QComboBox();
+    plotVarComboX = new QComboBox();
+    plotVarComboY = new QComboBox();
     estimationBox = new QGroupBox();
 
     correlationButton = new QPushButton("Correlation Test");
+    plotButton = new QPushButton("Plot Data");
 
     //Initialize and display the GUI
     setupDisplay();
@@ -59,7 +62,26 @@ void SteamGameStats::setupDisplay(void)
     yearCombo->addItem("2012");
     yearCombo->setFixedWidth(75);
 
-    //Set properties of correlation button
+    //Plot variable comboBoxes for the X and Y axis
+    plotVarComboX->addItem("Price");
+    plotVarComboX->addItem("Userscore");
+    plotVarComboX->addItem("Owners");
+    plotVarComboX->addItem("Playtime");
+    plotVarComboX->setCurrentIndex(0);
+    plotVarComboX->setFixedWidth(100);
+
+    plotVarComboY->addItem("Price");
+    plotVarComboY->addItem("Userscore");
+    plotVarComboY->addItem("Owners");
+    plotVarComboY->addItem("Playtime");
+    plotVarComboY->setCurrentIndex(1);      //Make sure the starting index is different
+    plotVarComboY->setFixedWidth(100);
+
+    //Set properties of the plot button
+    plotButton->setToolTip("Plot the data using corresponding variables");
+    plotButton->setMaximumWidth(120);
+
+    //Set properties of the correlation button
     correlationButton->setToolTip("Correlation Test using Pearson's' coefficient");
     correlationButton->setMaximumWidth(130);
 
@@ -73,19 +95,27 @@ void SteamGameStats::setupDisplay(void)
     //Connect Correlaton test button
     QObject::connect(correlationButton, SIGNAL(released()), this, SLOT(displayCorrelationTest()));
 
+    //Connect Plot button
+    QObject::connect(plotButton, SIGNAL(released()), this, SLOT(plotWithSelectedVariables()));
+
     //Use these layouts to display multiple labels in one line
-    QHBoxLayout *horizontalLayout1 = new QHBoxLayout();
-    horizontalLayout1->addWidget(p_valueLabel);
-    horizontalLayout1->addWidget(corrCoefficientLabel);
-    QHBoxLayout *horizontalLayout2 = new QHBoxLayout();
-    horizontalLayout2->addWidget(correlationButton);
-    horizontalLayout2->addWidget(correlationTestResultLabel);
+    QHBoxLayout *correlationStatsLayout = new QHBoxLayout();
+    correlationStatsLayout->addWidget(p_valueLabel);
+    correlationStatsLayout->addWidget(corrCoefficientLabel);
+    QHBoxLayout *correlationButtonLayout = new QHBoxLayout();
+    correlationButtonLayout->addWidget(correlationButton);
+    correlationButtonLayout->addWidget(correlationTestResultLabel);
+    QHBoxLayout *plotVariableLayout = new QHBoxLayout();
+    plotVariableLayout->addWidget(plotButton);
+    plotVariableLayout->addWidget(plotVarComboX);
+    plotVariableLayout->addWidget(plotVarComboY);
 
     //Add year selection and correlation test TODO: Add more?
     QFormLayout *topLeft = new QFormLayout();
     topLeft->addRow(tr("Select year:"), yearCombo);
-    topLeft->addRow(horizontalLayout2);
-    topLeft->addRow(horizontalLayout1);
+    topLeft->addRow(correlationButtonLayout);
+    topLeft->addRow(correlationStatsLayout);
+    topLeft->addRow(plotVariableLayout);
 
     //Set properties of yearBox
     yearBox->setMinimumSize(320,170);
@@ -129,7 +159,7 @@ void SteamGameStats::plot(plotVariable x_axis, plotVariable y_axis)
     //Declare both variables as strings to be evaluated by R
     std::string xVariableStatement, yVariableStatement;
 
-    //Also decalre each variable name, to use within R
+    //Also declare each variable name, to use within R
     std::string x_VariableName, y_VariableName;
 
     //Set up the SVG file
@@ -148,9 +178,6 @@ void SteamGameStats::plot(plotVariable x_axis, plotVariable y_axis)
                        " + labs(title='" + x_VariableName + " vs " + y_VariableName + "', x='" + x_VariableName + "', y='" + y_VariableName + "') "
                        " + geom_smooth(method=loess,se=FALSE) "
                        " + scale_colour_gradientn(colours=rainbow(7),guide=FALSE) );" ;
-                      // " + xlim(0,100) + ylim(0,200000) ); " ;
-
-                      //TODO Find a way to better fit data + Double check correlation test analysis
 
     std::string dev = "dev.off();";     //End of SVG file
 
@@ -237,6 +264,20 @@ void SteamGameStats::getStatsByYear()
     m_avgMetascore = m_R.parseEval(avgMetascore);
     m_totalPlaytime = m_R.parseEval(totalPlayTime);
 
+}
+
+void SteamGameStats::plotWithSelectedVariables()
+{
+    //Clear the corrletion test labels
+    correlationTestResultLabel->setText("");
+    corrCoefficientLabel->setText("Coeff: ");
+    p_valueLabel->setText("p-value: ");
+
+    //Get enum values from variable comboBoxes
+    plotVariable varX = static_cast<plotVariable>(plotVarComboX->currentIndex());
+    plotVariable varY = static_cast<plotVariable>(plotVarComboY->currentIndex());
+
+    plot(varX, varY);     //Plot the data
 }
 
 int SteamGameStats::getNumGames() const
@@ -399,7 +440,7 @@ void SteamGameStats::generateStatsAndPlot(int comboIndex)
         avgMetaScoreLabel->setText(QString::number(getAvgMetascore()) + "%");
         totalPlaytimeLabel->setText(QString::number(getTotalPlaytime()) + " hours");
 
-        plot(plotVariable::Price, plotVariable::Owners);     //Plot the data TODO: Change to selected comboBox values
+        plotWithSelectedVariables();    //TODO off by one error?
 
     }
     catch (std::exception &e)

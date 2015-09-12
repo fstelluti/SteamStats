@@ -38,13 +38,6 @@ public:
     SteamGameStats(RInside & R);
     ~SteamGameStats();
 
-private slots:
-    void setSteamYearDataFile(int year); //Sets the year to selected the correct data file
-    void readFile(QString file);         //Reads file into R
-    void getStatsByYear();               //Get all statistics based on selected year
-    void generateStatsAndPlot(int comboIndex);   //Generate the plot and statistics for the window based on the year selected
-    void displayCorrelationTest(void);   //Display the results of the correlation test
-
 private:
 
     //Enum to store plot variable names
@@ -56,7 +49,6 @@ private:
     };
 
     void setupDisplay(void);                                // Set up the GUI components
-    void plot(plotVariable x_axis, plotVariable y_axis);    // Run a plot of two selected variables, defined in plotVariable
     void filterFile(void);                                  // modify the richer SVG produced by R
 
     //Gets the correct data for the plot. Pass paramaters by reference to be able to use global variables
@@ -99,9 +91,21 @@ private:
     QLabel *corrCoefficientLabel, *p_valueLabel, *correlationTestMessageLabel, *correlationTestResultLabel;
 
     //Other UI components
-    QComboBox *yearCombo;
+    QComboBox *yearCombo, *plotVarComboX, *plotVarComboY;
     QGroupBox *estimationBox;
-    QPushButton *correlationButton; //Used to preform a correlation test
+    QPushButton *correlationButton, *plotButton; //Used to preform a correlation test and to plot
+
+private slots:
+
+    void setSteamYearDataFile(int year); //Sets the year to selected the correct data file
+    void readFile(QString file);         //Reads file into R
+    void getStatsByYear();               //Get all statistics based on selected year
+    void generateStatsAndPlot(int comboIndex);   //Generate the plot and statistics for the window based on the year selected
+    void displayCorrelationTest(void);   //Display the results of the correlation test
+
+    void plot(plotVariable x_axis, plotVariable y_axis);    // Run a plot of two selected variables, defined in plotVariable
+    void plotWithSelectedVariables();       //Used to plot based on the values of both plot variable comboBoxes
+
 
 };
 
