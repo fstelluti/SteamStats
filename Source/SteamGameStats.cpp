@@ -110,7 +110,7 @@ void SteamGameStats::setupDisplay(void)
     plotVariableLayout->addWidget(plotVarComboX);
     plotVariableLayout->addWidget(plotVarComboY);
 
-    //Add year selection and correlation test TODO: Add more?
+    //Add year selection and correlation test
     QFormLayout *topLeft = new QFormLayout();
     topLeft->addRow(tr("Select year:"), yearCombo);
     topLeft->addRow(correlationButtonLayout);
@@ -280,41 +280,6 @@ void SteamGameStats::plotWithSelectedVariables()
     plot(varX, varY);     //Plot the data
 }
 
-int SteamGameStats::getNumGames() const
-{
-    return m_numGames;
-}
-
-double SteamGameStats::getAvgPrice() const
-{
-    return m_avgPrice;
-}
-
-double SteamGameStats::getMaxPrice() const
-{
-    return m_maxPrice;
-}
-
-double SteamGameStats::getAvgMetascore() const
-{
-    return m_avgMetascore;
-}
-
-double SteamGameStats::getTotalPlaytime() const
-{
-    return m_totalPlaytime;
-}
-
-double SteamGameStats::getPValue() const
-{
-    return m_p_value;
-}
-
-double SteamGameStats::getCorrCoefficiant() const
-{
-    return m_corrCoeff;
-}
-
 void SteamGameStats::correlationTest(std::string variable1, std::string variable2, std::string name1, std::string name2) {
 
     //Compute the Pearson product-moment correlation coefficient to see if there is a positive or negative,
@@ -440,13 +405,48 @@ void SteamGameStats::generateStatsAndPlot(int comboIndex)
         avgMetaScoreLabel->setText(QString::number(getAvgMetascore()) + "%");
         totalPlaytimeLabel->setText(QString::number(getTotalPlaytime()) + " hours");
 
-        plotWithSelectedVariables();    //TODO off by one error?
+        plotWithSelectedVariables();
 
     }
     catch (std::exception &e)
     {
         std::cout << "Exception: " << e.what() << std::endl;
     }
+}
+
+int SteamGameStats::getNumGames() const
+{
+    return m_numGames;
+}
+
+double SteamGameStats::getAvgPrice() const
+{
+    return m_avgPrice;
+}
+
+double SteamGameStats::getMaxPrice() const
+{
+    return m_maxPrice;
+}
+
+double SteamGameStats::getAvgMetascore() const
+{
+    return m_avgMetascore;
+}
+
+double SteamGameStats::getTotalPlaytime() const
+{
+    return m_totalPlaytime;
+}
+
+double SteamGameStats::getPValue() const
+{
+    return m_p_value;
+}
+
+double SteamGameStats::getCorrCoefficiant() const
+{
+    return m_corrCoeff;
 }
 
 //Author: Eddelbuettel and Romain Francois - Copyright (C) 2011
